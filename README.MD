@@ -1,0 +1,290 @@
+# **DNS Lab — Bind9, AXFR, Failover, DNSSEC, NSEC3**
+
+This project is a fully containerized DNS lab built using **Bind9**, designed for engineers who want a reproducible environment to explore:
+
+- Authoritative DNS  
+- Forward and reverse lookups  
+- Primary/secondary zone transfers (AXFR)  
+- DNS failover behavior  
+- EDNS  
+- DNSSEC (ZSK/KSK, RRSIG, DNSKEY)  
+- NSEC3 denial‑of‑existence  
+
+The lab runs entirely inside Docker and is safe to experiment with.
+
+---
+
+## **Architecture**
+
+### **Components**
+- **ns1** — Primary authoritative DNS server  
+- **ns2** — Secondary authoritative DNS server  
+- **host1 / host2** — Client machines for testing  
+- **10.128.0.0/16** — Internal lab network  
+
+### **Flow**
+- ns1 serves the zone `nyc3.example.com`  
+- ns2 receives zone updates via AXFR  
+- host1/host2 query ns1 and ns2 directly  
+- DNSSEC (optional) is enabled on ns1 and replicated to ns2  
+
+---
+
+## **Features**
+
+### **Forward DNS**
+```
+dig @10.128.10.11 host1.nyc3.example.com
+```
+
+### **Reverse DNS**
+```
+dig -x 10.128.100.101
+```
+
+### **Zone Transfers (AXFR)**
+```
+dig @10.128.20.12 nyc3.example.com AXFR
+```
+
+### **Failover Testing**
+Stop ns1:
+
+```
+docker stop ns1
+```
+
+Query ns2:
+
+```
+dig @10.128.20.12 host1.nyc3.example.com
+```
+
+Start ns1 again:
+
+```
+docker start ns1
+```
+
+### **EDNS**
+```
+dig nyc3.example.com +dnssec
+```
+
+Shows:
+
+```
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, udp: 1232
+```
+
+### **DNSSEC (Optional)**
+Includes:
+
+- ZSK/KSK key generation  
+- Zone signing  
+- NSEC3 hashing  
+- RRSIG, DNSKEY, NSEC3 records  
+
+---
+
+## **Project Structure**
+
+```
+dns-lab/
+├── README.md
+├── Makefile
+├── architecture/
+│   ├── network-diagram.png
+│   └── dns-flow.png
+├── bind/
+│   ├── ns1/
+│   │   ├── named.conf
+│   │   ├── named.conf.options
+│   │   ├── named.conf.local
+│   │   └── zones/
+│   │       ├── db.nyc3.example.com
+│   │       ├── db.10.128
+│   └── ns2/
+│       ├── named.conf
+│       ├── named.conf.options
+│       ├── named.conf.local
+│       └── zones/
+├── docker/
+│   ├── docker-compose.yml
+│   └── Dockerfile.ns
+├── scripts/
+│   ├── test-forward.sh
+│   ├── test-reverse.sh
+│   └── test-failover.sh
+└── docs/
+    ├── dnssec.md
+    ├── nsec-vs-nsec3.md
+    └── troubleshooting.md
+```
+
+---
+
+## **Running the Lab**
+
+Start everything:
+
+```
+make up
+```
+
+Stop everything:
+
+```
+make down
+```
+
+Restart:
+
+```
+make restart
+```
+
+---
+
+## **DNSSEC Setup (Optional)**
+
+### **1. Generate keys**
+Inside ns1:
+
+```
+dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.example.com
+dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.example.com
+```
+
+### **2. Add DNSKEYs to the zone**
+In `db.nyc3.example.com`:
+
+```
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+<ZSK>.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+<KSK>.key"
+```
+
+### **3. Sign the zone with NSEC3**
+```
+make sign
+```
+
+### **4. Reload Bind9**
+```
+make reload
+```
+
+### **5. Test DNSSEC**
+```
+make dnssec-test
+```
+
+You should see:
+
+- DNSKEY  
+- RRSIG  
+- NSEC3  
+
+---
+
+## **Failover Testing**
+
+```
+make failover
+```
+
+This:
+
+1. Stops ns1  
+2. Queries ns2  
+3. Starts ns1  
+4. Queries ns1 again  
+
+---
+
+## **Security Notes**
+
+Add to `.gitignore`:
+
+```
+*.private
+*.signed
+*.jnl
+```
+
+Never publish DNSSEC private keys.
+
+---
+
+## **Troubleshooting**
+
+See `docs/troubleshooting.md` for:
+
+- SERVFAIL  
+- REFUSED  
+- NXDOMAIN  
+- AXFR failures  
+- DNSSEC signature issues  
+docker compose down
+docker rm -f $(docker ps -aq)
+docker volume prune -f
+docker compose up -d
+docker logs ns1
+
+docker compose down --remove-orphans
+docker compose up -d
+docker compose logs -f ns1
+docker ps
+docker exec -it ns1 bash -c "ps aux | grep named"
+docker exec -it ns1 bash -c "named-checkconf && echo OK" 
+docker exec -it host1 bash -c "dig host1.nyc3.example.com"
+docker exec -it ns1 bash -c "ps aux | grep named"
+docker exec -it host1 bash -c "dig host1.nyc3.example.com"
+docker exec -it host1 bash -c "dig -x 10.128.100.101"
+
+After startup, test everything
+Test ns1 is running
+docker compose logs ns1 > ns1.log
+docker exec -it ns1 bash
+ps aux | grep named
+Test ns2 pulled zones
+
+docker exec -it ns2 bash
+ls /var/cache/bind
+You should see:
+
+
+db.nyc3.example.com
+db.10.128
+Test DNS from host1
+
+docker exec -it host1 bash
+dig nyc3.example.com
+dig host1.nyc3.example.com
+dig -x 10.128.100.101
+Test DNS from host2
+
+docker exec -it host2 bash
+dig google.com
+dig host2.nyc3.example.com
+dig -x 10.128.200.102
+Test failover
+Stop ns1:
+
+
+docker stop ns1
+Then test DNS again from host1:
+
+
+dig google.com
+dig host1.nyc3.example.com
+ns2 should answer.
+
+
+explain AXFR/IXFR DHCP network interface belongs to your private subnet. 
+bridge driver → containers can talk to each other
+
+IPAM config → assigns a private subnet
+Defines a private DNS network
+10.128.0.0/16

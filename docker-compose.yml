@@ -1,0 +1,60 @@
+version: "3.9"
+
+networks:
+  dnsnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.128.0.0/16
+
+services:
+  ns1:
+    image: ubuntu:24.04
+    container_name: ns1
+    networks:
+      dnsnet:
+        ipv4_address: 10.128.10.11
+    volumes:
+      # - ./ns1/bind/named.conf:/etc/bind/named.conf
+      # - ./ns1/bind/named.conf.options:/etc/bind/named.conf.options
+      # - ./ns1/bind/named.conf.local:/etc/bind/named.conf.local
+      # - ./ns1/bind/zones:/etc/bind/zones
+      # - ./ns1/init.sh:/init.sh
+       - ./ns1/bind:/config/bind:ro
+       - ./ns1/init.sh:/init.sh
+    command: bash /init.sh
+
+  ns2:
+    image: ubuntu:24.04
+    container_name: ns2
+    networks:
+      dnsnet:
+        ipv4_address: 10.128.20.12
+    volumes:
+      # - ./ns2/bind/named.conf:/etc/bind/named.conf
+      # - ./ns2/bind/named.conf.options:/etc/bind/named.conf.options
+      # - ./ns2/bind/named.conf.local:/etc/bind/named.conf.local
+      # - ./ns2/init.sh:/init.sh
+        - ./ns1/bind:/config/bind:ro
+        - ./ns1/init.sh:/init.sh
+    command: bash /init.sh
+
+  host1:
+    image: ubuntu:24.04
+    container_name: host1
+    networks:
+      dnsnet:
+        ipv4_address: 10.128.100.101
+    volumes:
+      - ./host1/init.sh:/init.sh
+    command: bash /init.sh
+
+  host2:
+    image: ubuntu:24.04
+    container_name: host2
+    networks:
+      dnsnet:
+        ipv4_address: 10.128.200.102
+    volumes:
+      - ./host2/init.sh:/init.sh
+    command: bash /init.sh

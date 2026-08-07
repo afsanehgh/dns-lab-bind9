@@ -1,0 +1,17 @@
+# DNSSEC private keys
+*.private
+
+# Signed zone files
+*.signed
+
+# Bind journal files
+*.jnl
+
+# Editor backups
+*~
+
+# Docker artifacts
+*.log
+
+
+mytroubleshooting.md
