@@ -17,3 +17,6 @@ ns2.nyc3.example.com.    IN      A       10.128.20.12
 ; 10.128.0.0/16 - A records
 host1.nyc3.example.com.  IN      A       10.128.100.101
 host2.nyc3.example.com.  IN      A       10.128.200.102
+
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+55024.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+60727.key"

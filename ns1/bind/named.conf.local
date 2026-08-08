@@ -1,6 +1,6 @@
 zone "nyc3.example.com" {
     type primary;
-    file "/etc/bind/zones/db.nyc3.example.com";
+    file "/etc/bind/zones/db.nyc3.example.com.signed";
     allow-transfer { 10.128.20.12; };  # ns2 private IP - secondary
 };
 

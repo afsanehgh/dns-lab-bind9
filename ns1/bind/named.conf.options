@@ -7,6 +7,8 @@ acl "trusted" {
 
 options {
     directory "/var/cache/bind";
+    listen-on { 127.0.0.1; 10.128.10.11; };
+    listen-on-v6 { any; };
 
     recursion yes;                 # enables recursive queries
     allow-recursion { trusted; };  # allows recursive queries from "trusted" clients

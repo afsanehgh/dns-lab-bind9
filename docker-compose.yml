@@ -35,8 +35,8 @@ services:
       # - ./ns2/bind/named.conf.options:/etc/bind/named.conf.options
       # - ./ns2/bind/named.conf.local:/etc/bind/named.conf.local
       # - ./ns2/init.sh:/init.sh
-        - ./ns1/bind:/config/bind:ro
-        - ./ns1/init.sh:/init.sh
+        - ./ns2/bind:/config/bind:ro
+        - ./ns2/init.sh:/init.sh
     command: bash /init.sh
 
   host1:

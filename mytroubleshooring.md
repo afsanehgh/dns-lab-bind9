@@ -52,6 +52,19 @@ sudo named-checkzone 128.10.in-addr.arpa /etc/bind/zones/db.10.128
 sudo systemctl reload bind9
 
 ## Troubleshooting
+
+docker exec -it host1 bash -c "dig host1.nyc3.example.com" //check if dns is up
+docker exec -it ns2 bash -c "ss -tulnp | grep :53"
+docker exec -it host1 bash -c "dig @10.128.20.12 host1.nyc3.example.com"
+docker exec -it ns2 bash -c "ip addr show eth0"
+docker exec -it ns1 bash -c "ip addr show eth0"
+docker compose up -d --force-recreate ns2
+docker exec -it ns2 bash -c "cat -A /config/bind/named.conf.options | grep listen-on"
+docker exec -it ns2 bash -c "cat -A /etc/bind/named.conf.options | grep listen-on"
+docker exec -it ns2 bash -c "ss -tulnp | grep :53"
+named-checkconf -z
+docker ps -a --filter name=ns2
+docker compose logs ns2 --tail 50
 docker compose down
 docker rm -f $(docker ps -aq)
 docker volume prune -f
@@ -106,7 +119,8 @@ Then test DNS again from host1:
 dig google.com
 dig host1.nyc3.example.com
 ns2 should answer.
-
+netstat
+delv
 
 explain AXFR/IXFR DHCP network interface belongs to your private subnet. 
 bridge driver → containers can talk to each other

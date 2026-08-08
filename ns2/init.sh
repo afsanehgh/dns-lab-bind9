@@ -3,7 +3,7 @@ set -euxo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-pt-get update
+apt-get update
 apt-get install -y \
   -o Dpkg::Options::="--force-confold" \
   -o Dpkg::Options::="--force-confdef" \
