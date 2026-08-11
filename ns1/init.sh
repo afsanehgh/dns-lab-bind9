@@ -7,7 +7,7 @@ apt-get update
 apt-get install -y \
   -o Dpkg::Options::="--force-confold" \
   -o Dpkg::Options::="--force-confdef" \
-  sudo openssh-server bind9 bind9utils bind9-doc nano dnsutils util-linux bsdmainutils iptables iproute2 net-tools
+  sudo openssh-server bind9 bind9utils bind9-doc nano dnsutils util-linux bsdmainutils iptables iproute2 net-tools traceroute iputils-ping curl ethtool
 
 # Create user
 id -u cocoa &>/dev/null || useradd -m -s /bin/bash cocoa

@@ -13,6 +13,25 @@ dig nyc3.example.com
 ;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL
 ```
 
+docker exec host1 dig nyc3.example.com
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> nyc3.example.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 13696
+;; flags: qr rd; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
+;; WARNING: recursion requested but not available
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: e7a9105324ca8399010000006a7aa66f78919f69539a4620 (good)
+;; QUESTION SECTION:
+;nyc3.example.com.              IN      A
+
+;; Query time: 0 msec
+;; SERVER: 10.128.10.11#53(10.128.10.11) (UDP)
+;; WHEN: Tue Aug 11 04:34:55 UTC 2026
+
 ### Causes
 - Zone file syntax error
 - DNSSEC signature expired
@@ -88,7 +107,8 @@ EDNS missing:
 ```
 
 ### Causes
-- EDNS disabled
+- EDNS disabled - docker exec host1 dig +noedns "@10.128.10.11" host1.nyc3.example.com
+                - docker exec host1 dig +noedns +dnssec "@10.128.10.11" nyc3.example.com 
 - Firewall blocking UDP fragments
 
 ### Fix
@@ -102,7 +122,8 @@ in `named.conf.options`.
 
 ---
 
-## 5. AXFR Fails
+## 5. AXFR Fails - docker exec ns2 dig "@10.128.10.11" nyc3.example.com AXFR 
+  ##             - docker exec host1 dig "@10.128.10.11" nyc3.example.com AXFR +noall +answer +authority +comments
 
 ### Symptoms
 ```
@@ -110,7 +131,8 @@ transfer failed
 ```
 
 ### Causes
-- ns1 not reachable
+- ns1 not reachable - docker stop ns1
+                    - docker exec ns2 dig "@10.128.10.11" nyc3.example.com AXFR
 - ACL missing
 - Serial number not incremented
 

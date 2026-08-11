@@ -4,7 +4,7 @@ set -euxo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y sudo openssh-server dnsutils iptables
+apt-get install -y sudo openssh-server nano dnsutils util-linux bsdmainutils iptables iproute2 net-tools traceroute iputils-ping curl
 
 id -u cocoa &>/dev/null || useradd -m -s /bin/bash cocoa
 echo "cocoa:cocoag" | chpasswd

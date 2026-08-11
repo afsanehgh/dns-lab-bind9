@@ -42,6 +42,13 @@ Zone transfer:
 dig @10.128.20.12 nyc3.example.com AXFR
 
 
+## logs ns1
+docker exec ns1 date
+docker compose logs ns2 --tail 50
+docker logs ns1
+docker compose logs ns1 > ns1.log
+
+
 ## on all of the clients that you have configured and are in the trusted ACL
 nslookup host1
 
@@ -112,6 +119,7 @@ Test failover
 Stop ns1:
 
 
+
 docker stop ns1
 Then test DNS again from host1:
 
@@ -119,6 +127,214 @@ Then test DNS again from host1:
 dig google.com
 dig host1.nyc3.example.com
 ns2 should answer.
+
+## ns1 regenrate keys when gone from /etc/bind/zones/
+ls -la /etc/bind/zones/
+cd /etc/bind/zones
+dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.example.com
+dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.example.com
+Check what the zone file currently references:
+
+bash
+grep INCLUDE db.nyc3.example.com
+
+Then update those lines to match the newly generated key filenames:
+
+bash
+ls Knyc3.example.com.+008+*.key
+docker cp .\ns1\bind\zones\db.nyc3.example.com ns1:/etc/bind/zones/db.nyc3.example.com
+docker exec ns1 grep INCLUDE /etc/bind/zones/db.nyc3.example.com
+docker exec -it ns1 bash
+cd /etc/bind/zones
+SALT=$(head -c 16 /dev/urandom | hexdump -e '1/1 "%02x"')
+dnssec-signzone -3 $SALT -A -N keep -o nyc3.example.com db.nyc3.example.com
+rndc reload
+
+docker exec host1 dig "@10.128.10.11" nyc3.example.com NS
+docker exec host1 dig "@10.128.10.11" host1.nyc3.example.com
+docker exec host1 dig "@10.128.10.11" nyc3.example.com +dnssec
+docker exec host1 dig "@10.128.10.11" nyc3.example.com DNSKEY +multiline
+
+
+## after turning recursive off and make it iterative
+Now that ns1/ns2 have recursion no;, here's how to actually demonstrate and test iterative behavior properly.
+
+1. Confirm ns1 refuses to do recursive work for you (the negative test)
+bash
+docker exec host1 dig "@10.128.10.11" google.com
+
+Expect either REFUSED or the "recursion requested but not available" warning with an empty answer — ns1 should not chase down google.com for you, since that's outside its authority and recursion is off. This is the direct confirmation your config change worked.
+
+2. Confirm ns1 still answers authoritatively for its own zone (sanity check)
+bash
+docker exec host1 dig "@10.128.10.11" host1.nyc3.example.com
+
+Should return a clean answer — ns1 doesn't need recursion to answer for names it's authoritative for; recursion only matters for names outside its zone.
+
+3. See the actual iterative process yourself with dig +trace
+
+This is the real teaching tool — it makes your own dig client do the iterative walk manually, hop by hop, exactly the way a resolver would if it weren't allowed to just ask one recursive server:
+
+bash
+docker exec host1 dig +trace google.com
+
+You'll see output like:
+
+.                       ...  IN  NS  a.root-servers.net.
+;; Received ... from 198.41.0.4#53(a.root-servers.net)
+
+com.                    ...  IN  NS  a.gtld-servers.net.
+;; Received ... from ...#53(a.gtld-servers.net)
+
+google.com.             ...  IN  A   142.250.x.x
+;; Received ... from ...#53(...)
+
+Each block is one iterative "hop" — root → TLD → authoritative — exactly the referral-chasing behavior ns1 would now refuse to do on your behalf, because recursion is off.
+
+Note: +trace needs actual internet access from inside host1 to reach the real root servers — if your container's outbound networking is restricted, this may itself time out; if so it's a container network issue, not a DNS config issue.
+
+4. Trace against your own lab zone (fully self-contained, no internet needed)
+bash
+docker exec host1 dig +trace nyc3.example.com @10.128.10.11
+
+This won't really "iterate" much since ns1 is authoritative for the whole zone in one hop, but it's worth trying to see how +trace behaves when there's no deeper delegation to walk.
+
+5. Direct comparison — REFUSED (iterative-only) vs a working recursive resolver
+
+To make the contrast obvious, compare ns1's refusal against a real recursive resolver like 8.8.8.8:
+
+bash
+docker exec host1 dig "@10.128.10.11" google.com     # REFUSED — no recursion
+docker exec host1 dig "@8.8.8.8" google.com            # NOERROR — full recursive answer
+
+Same query, two servers, two completely different postures — that side-by-side is the clearest possible demonstration of what recursion no; actually changes.
+
+Run #1 first — that's the direct pass/fail test for your config change — and paste the output so we confirm ns1 is now correctly iterative-only.
+## delv
+<!-- Related flags, for context:
+
++mtrace — message-level trace (raw query/response traffic)
++rtrace — resolver trace (recursion/delegation steps)
++vtrace — validation trace (DNSSEC-specific, what you're asking about)
+-d <level>1/2/3 — general debug verbosity, which can overlap with and add to what +vtrace shows -->
+
+
+delv @10.128.10.11 host1.nyc3.example.com
+delv -i @10.128.10.11 host1.nyc3.example.com
+delv -i @10.128.20.12 host2.nyc3.example.com
+docker exec host1 delv -d 3 "@10.128.10.11" ns1.nyc3.example.com
+docker exec host1 delv +vtrace  -d 3 "@10.128.10.11" ns1.nyc3.example.com
+
+delv -a /tmp/trust-anchor.conf +root=nyc3.example.com -d 3 @10.128.10.11 host1.nyc3.example.com 2>&1 | head -60
+root@ns1:/# prompt inside the container, run:
+dig @10.128.10.11 nyc3.example.com DNSKEY +multiline
+
+cat > /tmp/trust-anchor.conf << EOF
+trust-anchors {
+    nyc3.example.com static-key 257 3 8 "AwEAAeSsDlONjOWrpcl5X3HJKzGX8nCCD/pEcDm5/qe6ilosq2wd1hYMwkklkvrUMSO4/SS1WBo93Y7NB9KxbM5izX5AyikeLlv/m3hdtHywGS7DNxNN1K18cUVNwTwKwRCVVoBa5qONEyZYfnKdb1FCIcJhgULfGIfS+21E9rOt3vmsWQPMPILyBUrkoYiv4KT84ZNMksz3yYvqv8pJqF0W4h7T0rJQwzLqR3mS47JIAdvcPdn2QfXjAtDtBfaqnpq82QAmnJQFJrrWd3JSwgu20QwjnGVkdI0ESX7sgj8s0M4sfXj7GnSsRMg4cC2Phvkdrq+FQW592rM2Z6GEClZAsvuUPgwOlkdhzQCMIDD0gSNWc0sX5x8KS3k+mXbyOrl2kDLPFGkuTqKfzYQMLkcGZt53BezhZ2tX8JnGzAXEPz7zxzp6pBIPLIQ7oed8eZQRnd5pVYIDlhypustgwruQr5jO5OViw826Eqsd0pl6PvwZ3CMgEGr59YptdzOMWActllxzL7yE7t12y9MkW9u3bhXYyeonJdyyKuERe/ixVN97JsSfhISJwSRsGj+KH3Nw6Duz5hxjcuqQbqhgfaLHsfIYASVLQcz7LuAk3dYgk3z9p2AYhOmHnAYo7jzQubIeGjfAbtnmtH+y/tJ+vXx0qViWcP2iGSoACF9hYIEtScS7";
+};
+EOF
+
+sed -i 's/static-key/initial-key/' /tmp/trust-anchor.conf
+
+
+delv -a /tmp/trust-anchor.conf +root=nyc3.example.com @10.128.10.11 host1.nyc3.example.com
+docker exec ns1 delv +vtrace -d 3 -a /tmp/trust-anchor.conf +root=nyc3.example.com "@10.128.10.11" ns1.nyc3.example.com
+## docker copy
+docker cp .\ns1\bind\zones\db.nyc3.example.com ns1:/etc/bind/zones/db.nyc3.example.com
+## docker back up main files
+docker exec ns1 cp /etc/bind/named.conf.local /etc/bind/named.conf.local.bak
+## to read A records
+docker exec ns1 grep ns1.nyc3.example.com /etc/bind/zones/db.nyc3.example.com
+Check the signed file directly for the A record:
+
+
+## force ns2 to pull update immediately
+docker exec ns2 rndc retransfer nyc3.example.com
+##
+## 3. NXDOMAIN
+
+
+ Symptoms
+```
+status: NXDOMAIN
+```
+
+
+Causes
+- Record does not exist
+- NSEC3 proves non-existence
+
+
+ Fix
+Check zone file for missing A/PTR records.
+
+bash
+docker exec ns1 grep -A2 "ns1.nyc3.example.com" /etc/bind/zones/db.nyc3.example.com.signed
+
+This tells us definitively: did dnssec-signzone actually process your edited source file, or did it somehow sign a different/cached version?
+
+Also worth checking — is BIND's in-memory zone actually matching the file on disk, or is there a caching layer in front of it?
+
+bash
+docker exec ns1 rndc dumpdb -zones
+docker exec ns1 cat /var/cache/bind/named_dump.db | grep -A3 "ns1.nyc3.example.com"
+
+(path may vary — check directory setting in named.conf.options, which you showed earlier as /var/cache/bind)
+
+And double check host1 itself isn't caching the old answer — even though you're querying ns1 directly, some dig setups or intermediate caching could theoretically interfere (less likely given aa flag is set, meaning authoritative answer, not cached):
+
+bash
+docker exec host1 dig "@10.128.10.11" ns1.nyc3.example.com A +noedns
+
+This is the real answer, and it's a clean finding: the in-memory zone BIND is actually serving still has the A record:
+
+ns1.nyc3.example.com.  604800 IN A  10.128.10.11
+RRSIG A 8 4 604800 20260910035550 20260811035550 44454 nyc3.example.com. ...
+
+This RRSIG's inception time is 20260811035550 = 03:55:50 today — which is earlier than your 08:02 signing run. So this dump is showing you a zone signed before your edit, meaning rndc reload didn't actually pick up the newly-signed 08:02 file into memory, even though dnssec-signzone itself ran successfully and updated the file on disk.
+
+This is a known BIND gotcha: rndc reload doesn't always force a full re-read if BIND thinks the zone is already loaded/current — especially depending on serial number handling. Let's force it properly.
+
+1. Check the actual SOA serial in the signed file vs what's loaded:
+
+powershell
+docker exec ns1 bash -c "grep -A1 'IN.*SOA' /etc/bind/zones/db.nyc3.example.com.signed | head -2"
+
+If the serial is still 3 (unchanged from before your edit), that's likely why BIND isn't reloading — many nameservers treat an unchanged serial as "nothing changed, skip it," even though the actual record content differs.
+
+2. Force a genuinely fresh reload of just this zone, not the whole server:
+
+powershell
+docker exec ns1 rndc reload nyc3.example.com
+
+(reloading a specific zone by name is sometimes more reliable than a blanket rndc reload)
+
+3. If that still doesn't work, bump the serial and re-sign — this is very likely the actual fix:
+
+bash
+docker exec -it ns1 bash
+bash
+cd /etc/bind/zones
+sed -i 's/^\( *\)3\( *; Serial\)/\14\2/' db.nyc3.example.com
+grep -A1 SOA db.nyc3.example.com
+SALT=$(head -c 16 /dev/urandom | hexdump -e '1/1 "%02x"')
+dnssec-signzone -3 $SALT -A -N keep -o nyc3.example.com db.nyc3.example.com
+rndc reload
+exit
+
+
+## change serial 3 to 4 
+docker exec -it ns1 bash
+cd /etc/bind/zones
+sed -i 's/^\( *\)3\( *; Serial\)/\14\2/' db.nyc3.example.com
+grep -B1 -A1 Serial db.nyc3.example.com
+
+
+
+
+
+## ########
 netstat
 delv
 
