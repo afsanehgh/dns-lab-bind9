@@ -1,11 +1,15 @@
 zone "nyc3.example.com" {
     type secondary;
     file "db.nyc3.example.com";
-    primaries { 10.128.10.11; };  # ns1 private IP
+    primaries { 10.128.10.11; };
 };
-
-zone "128.10.in-addr.arpa" {
+zone "10.128.10.in-addr.arpa" {
     type secondary;
-    file "db.10.128";
-    primaries { 10.128.10.11; };  # ns1 private IP
+    file "db.10.10.128";
+    primaries { 10.128.10.11; };
+};
+zone "20.128.10.in-addr.arpa" {
+    type secondary;
+    file "db.20.10.128";
+    primaries { 10.128.10.11; };
 };
