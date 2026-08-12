@@ -25,17 +25,17 @@ Inside **ns1**:
 cd /etc/bind/zones
 
 # Zone Signing Key (ZSK)
-dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.snowy.com
+dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.example.com
 
 # Key Signing Key (KSK)
-dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.snowy.com
+dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.example.com
 
 ls -l /etc/bind/zones
 # Copy the keys into ns1 (if generated on host)
-# docker cp Knyc3.snowy.com.+008<key>.key ns1:/etc/bind/zones/
-# docker cp Knyc3.snowy.com.+008<key>.private ns1:/etc/bind/zones/
+# docker cp Knyc3.example.com.+008<key>.key ns1:/etc/bind/zones/
+# docker cp Knyc3.example.com.+008<key>.private ns1:/etc/bind/zones/
  SALT=$(head -c 16 /dev/urandom | hexdump -e '1/1 "%02x"')
-dnssec-signzone -3 $SALT -A -N keep -o nyc3.snowy.com db.nyc3.snowy.com
+dnssec-signzone -3 $SALT -A -N keep -o nyc3.example.com db.nyc3.example.com
 
 ## his allows Bind9 to write:
 ##managed-keys.bind
@@ -50,18 +50,18 @@ chmod -R 755 /etc/bind
 named-checkconf && rndc reload
 docker restart ns1
 
-nano /etc/bind/zones/db.nyc3.snowy.com
+nano /etc/bind/zones/db.nyc3.example.com
 
 ## And your DNSSEC includes at the bottom of the file:
-$INCLUDE "/etc/bind/zones/Knyc3.snowy.com.+008<key>.key"
-$INCLUDE "/etc/bind/zones/Knyc3.snowy.com.+008<key>.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008<key>.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008<key>.key"
 
 
 
 
 nano /etc/bind/named.conf.local
-## Change: file "/etc/bind/zones/db.nyc3.snowy.com";
-file "/etc/bind/zones/db.nyc3.snowy.com.signed";
+## Change: file "/etc/bind/zones/db.nyc3.example.com";
+file "/etc/bind/zones/db.nyc3.example.com.signed";
 
 systemctl restart bind9 #or service bind9 restart
 

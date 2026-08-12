@@ -1,15 +1,15 @@
 $TTL    604800
-@       IN      SOA     ns1.nyc3.snowy.com. admin.nyc3.snowy.com. (
+@       IN      SOA     ns1.nyc3.example.com. admin.nyc3.example.com. (
                         1          ; Serial
                         604800     ; Refresh
                         86400      ; Retry
                         2419200    ; Expire
                         604800 )   ; Negative Cache TTL
 ;
-        IN      NS      ns1.nyc3.snowy.com.
-        IN      NS      ns2.nyc3.snowy.com.
+        IN      NS      ns1.nyc3.example.com.
+        IN      NS      ns2.nyc3.example.com.
 
 ; PTR records for 10.128.20.0/24
-1       IN      PTR     router.nyc3.snowy.com.
-101     IN      PTR     host1.nyc3.snowy.com.
-102     IN      PTR     host2.nyc3.snowy.com.
+1       IN      PTR     router.nyc3.example.com.
+101     IN      PTR     host1.nyc3.example.com.
+102     IN      PTR     host2.nyc3.example.com.

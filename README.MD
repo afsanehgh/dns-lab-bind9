@@ -23,7 +23,7 @@ The lab runs entirely inside Docker and is safe to experiment with.
 - **10.128.0.0/16** — Internal lab network  
 
 ### **Flow**
-- ns1 serves the zone `nyc3.snowy.com`  
+- ns1 serves the zone `nyc3.example.com`  
 - ns2 receives zone updates via AXFR  
 - host1/host2 query ns1 and ns2 directly  
 - DNSSEC (optional) is enabled on ns1 and replicated to ns2  
@@ -34,7 +34,7 @@ The lab runs entirely inside Docker and is safe to experiment with.
 
 ### **Forward DNS**
 ```
-dig @10.128.10.11 host1.nyc3.snowy.com
+dig @10.128.10.11 host1.nyc3.example.com
 ```
 
 ### **Reverse DNS**
@@ -44,7 +44,7 @@ dig -x 10.128.100.101
 
 ### **Zone Transfers (AXFR)**
 ```
-dig @10.128.20.12 nyc3.snowy.com AXFR
+dig @10.128.20.12 nyc3.example.com AXFR
 ```
 
 ### **Failover Testing**
@@ -57,7 +57,7 @@ docker stop ns1
 Query ns2:
 
 ```
-dig @10.128.20.12 host1.nyc3.snowy.com
+dig @10.128.20.12 host1.nyc3.example.com
 ```
 
 Start ns1 again:
@@ -68,7 +68,7 @@ docker start ns1
 
 ### **EDNS**
 ```
-dig nyc3.snowy.com +dnssec
+dig nyc3.example.com +dnssec
 ```
 
 Shows:
@@ -103,7 +103,7 @@ dns-lab/
 │   │   ├── named.conf.options
 │   │   ├── named.conf.local
 │   │   └── zones/
-│   │       ├── db.nyc3.snowy.com
+│   │       ├── db.nyc3.example.com
 │   │       ├── db.10.128
 │   └── ns2/
 │       ├── named.conf
@@ -153,16 +153,16 @@ make restart
 Inside ns1:
 
 ```
-dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.snowy.com
-dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.snowy.com
+dnssec-keygen -a RSASHA256 -b 2048 -n ZONE nyc3.example.com
+dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE nyc3.example.com
 ```
 
 ### **2. Add DNSKEYs to the zone**
-In `db.nyc3.snowy.com`:
+In `db.nyc3.example.com`:
 
 ```
-$INCLUDE "/etc/bind/zones/Knyc3.snowy.com.+008+<ZSK>.key"
-$INCLUDE "/etc/bind/zones/Knyc3.snowy.com.+008+<KSK>.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+<ZSK>.key"
+$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+<KSK>.key"
 ```
 
 ### **3. Sign the zone with NSEC3**
@@ -238,9 +238,9 @@ docker compose logs -f ns1
 docker ps
 docker exec -it ns1 bash -c "ps aux | grep named"
 docker exec -it ns1 bash -c "named-checkconf && echo OK" 
-docker exec -it host1 bash -c "dig host1.nyc3.snowy.com"
+docker exec -it host1 bash -c "dig host1.nyc3.example.com"
 docker exec -it ns1 bash -c "ps aux | grep named"
-docker exec -it host1 bash -c "dig host1.nyc3.snowy.com"
+docker exec -it host1 bash -c "dig host1.nyc3.example.com"
 docker exec -it host1 bash -c "dig -x 10.128.100.101"
 
 
