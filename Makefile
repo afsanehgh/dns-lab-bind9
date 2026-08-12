@@ -39,11 +39,7 @@ check:
 # ================================
 
 dnssec-keys:
-	docker exec $(NS1_CONTAINER) bash -c "cd /etc/bind/zones && \
-	    dnssec-keygen -a RSASHA256 -b 2048 -n ZONE $(ZONE)"
-	docker exec $(NS1_CONTAINER) bash -c "cd /etc/bind/zones && \
-	    dnssec-keygen -f KSK -a RSASHA256 -b 4096 -n ZONE $(ZONE)"
-	@echo "Keys generated. Add .key files to your zone file manually."
+	docker exec $(NS1_CONTAINER) /scripts/gen-dnssec-keys.sh $(ZONE)
 
 # ================================
 # DNSSEC signing (NSEC3)
@@ -51,13 +47,13 @@ dnssec-keys:
 
 sign:
 	docker exec $(NS1_CONTAINER) bash -c "\
-	    dnssec-signzone -3 $(SALT) -A -N keep \
-	    -o $(ZONE) /etc/bind/zones/db.$(ZONE)"
+	    cd /etc/bind/zones && dnssec-signzone -3 $(SALT) -A -N keep \
+	    -o $(ZONE) db.$(ZONE)"
 	@echo "Signed zone created: $(SIGNED_ZONE)"
 
 reload:
-	docker exec $(NS1_CONTAINER) systemctl restart bind9
-	docker exec $(NS2_CONTAINER) systemctl restart bind9
+	docker exec $(NS1_CONTAINER) rndc reload
+	docker exec $(NS2_CONTAINER) rndc reload
 
 # ================================
 # DNSSEC verification
@@ -73,7 +69,7 @@ dnssec-test:
 
 failover:
 	docker stop $(NS1_CONTAINER)
-	docker exec host1 dig @10.128.20.12 host1.$(ZONE)
+	docker exec host1 dig @10.128.10.12 host1.$(ZONE)
 	docker start $(NS1_CONTAINER)
 	docker exec host1 dig @10.128.10.11 host1.$(ZONE)
 
@@ -87,6 +83,28 @@ clean:
 	@echo "Cleaned signed and journal files."
 
 # ================================
+# Testing scripts
+# ================================
+
+test-bind:
+	docker exec ns1 /scripts/test-bindpermission.sh
+
+test-dnssec:
+	docker exec ns1 /scripts/test-dnssec.sh
+
+test-forward:
+	docker exec ns1 /scripts/test-forward.sh
+
+test-reverse:
+	docker exec ns1 /scripts/test-reverse.sh
+
+test-failover:
+	docker exec ns2 /scripts/test-failover.sh
+
+router-setup:
+	./scripts/setup-router.sh
+
+# ================================
 # Help
 # ================================
 
@@ -98,7 +116,7 @@ help:
 	@echo "  make check         - Validate Bind9 configs"
 	@echo "  make dnssec-keys   - Generate DNSSEC keys"
 	@echo "  make sign          - Sign zone with DNSSEC + NSEC3"
-	@echo "  make reload        - Restart Bind9 on ns1/ns2"
+	@echo "  make reload        - Reload Bind9 on ns1/ns2"
 	@echo "  make dnssec-test   - Test DNSSEC responses"
 	@echo "  make failover      - Test ns1/ns2 failover"
 	@echo "  make clean         - Remove signed/journal files"
