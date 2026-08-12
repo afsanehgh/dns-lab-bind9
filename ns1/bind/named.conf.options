@@ -1,8 +1,8 @@
 acl "trusted" {
     10.128.10.11;    # ns1
-    10.128.20.12;    # ns2
-    10.128.100.101;  # host1
-    10.128.200.102;  # host2
+    10.128.10.12;    # ns2
+    10.128.20.101;   # host1
+    10.128.20.102;   # host2
 };
 
 options {
@@ -10,10 +10,9 @@ options {
     listen-on { 127.0.0.1; 10.128.10.11; };
     listen-on-v6 { any; };
 
-    recursion yes;                 # enables recursive queries
-    allow-recursion { trusted; };  # allows recursive queries from "trusted" clients
-    listen-on { 10.128.10.11; };   # ns1 private IP address - private network only
-    allow-transfer { none; };      # disable zone transfers by default
+    recursion yes;                  # enables recursive queries
+    allow-recursion { trusted; };   # allows recursive queries from "trusted" clients
+    allow-transfer { none; };       # disable zone transfers by default
 
     forwarders {
         8.8.8.8;

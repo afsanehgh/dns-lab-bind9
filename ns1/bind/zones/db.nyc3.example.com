@@ -1,6 +1,6 @@
 $TTL    604800
 @       IN      SOA     ns1.nyc3.example.com. admin.nyc3.example.com. (
-                        3         ; Serial
+                        11         ; Serial
                         604800    ; Refresh
                         86400     ; Retry
                         2419200   ; Expire
@@ -11,12 +11,11 @@ $TTL    604800
         IN      NS      ns2.nyc3.example.com.
 
 ; name servers - A records
-;ns1.nyc3.example.com.    IN      A       10.128.10.11
-ns2.nyc3.example.com.    IN      A       10.128.20.12
+ns1.nyc3.example.com.    IN      A       10.128.10.11
+ns2.nyc3.example.com.    IN      A       10.128.10.12
 
 ; 10.128.0.0/16 - A records
-host1.nyc3.example.com.  IN      A       10.128.100.101
-host2.nyc3.example.com.  IN      A       10.128.200.102
+host1.nyc3.example.com.  IN      A       10.128.20.101
+host2.nyc3.example.com.  IN      A       10.128.20.102
+router.nyc3.example.com.  IN      A       10.128.10.1
 
-$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+28412.key"
-$INCLUDE "/etc/bind/zones/Knyc3.example.com.+008+44454.key"

@@ -1,50 +1,52 @@
-version: "3.9"
+version: "4.0"
 
 networks:
-  dnsnet:
-    driver: bridge
+  net-dns:
     ipam:
       config:
-        - subnet: 10.128.0.0/16
+        - subnet: 10.128.10.0/24
+          gateway: 10.128.10.254
+  net-clients:
+    ipam:
+      config:
+        - subnet: 10.128.20.0/24
+          gateway: 10.128.20.254
 
 services:
   ns1:
     image: ubuntu:24.04
     container_name: ns1
+    cap_add:
+      - NET_ADMIN
     networks:
-      dnsnet:
+      net-dns:
         ipv4_address: 10.128.10.11
     volumes:
-      # - ./ns1/bind/named.conf:/etc/bind/named.conf
-      # - ./ns1/bind/named.conf.options:/etc/bind/named.conf.options
-      # - ./ns1/bind/named.conf.local:/etc/bind/named.conf.local
-      # - ./ns1/bind/zones:/etc/bind/zones
-      # - ./ns1/init.sh:/init.sh
-       - ./ns1/bind:/config/bind:ro
-       - ./ns1/init.sh:/init.sh
+      - ./ns1/bind:/config/bind:ro
+      - ./ns1/init.sh:/init.sh
     command: bash /init.sh
 
   ns2:
     image: ubuntu:24.04
     container_name: ns2
+    cap_add:
+      - NET_ADMIN
     networks:
-      dnsnet:
-        ipv4_address: 10.128.20.12
+      net-dns:
+        ipv4_address: 10.128.10.12
     volumes:
-      # - ./ns2/bind/named.conf:/etc/bind/named.conf
-      # - ./ns2/bind/named.conf.options:/etc/bind/named.conf.options
-      # - ./ns2/bind/named.conf.local:/etc/bind/named.conf.local
-      # - ./ns2/init.sh:/init.sh
-        - ./ns2/bind:/config/bind:ro
-        - ./ns2/init.sh:/init.sh
+      - ./ns2/bind:/config/bind:ro
+      - ./ns2/init.sh:/init.sh
     command: bash /init.sh
 
   host1:
     image: ubuntu:24.04
     container_name: host1
+    cap_add:
+      - NET_ADMIN
     networks:
-      dnsnet:
-        ipv4_address: 10.128.100.101
+      net-clients:
+        ipv4_address: 10.128.20.101
     volumes:
       - ./host1/init.sh:/init.sh
     command: bash /init.sh
@@ -52,9 +54,26 @@ services:
   host2:
     image: ubuntu:24.04
     container_name: host2
+    cap_add:
+      - NET_ADMIN
     networks:
-      dnsnet:
-        ipv4_address: 10.128.200.102
+      net-clients:
+        ipv4_address: 10.128.20.102
     volumes:
       - ./host2/init.sh:/init.sh
     command: bash /init.sh
+
+  router:
+    image: alpine:latest
+    container_name: router
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      net-dns:
+        ipv4_address: 10.128.10.1
+      net-clients:
+        ipv4_address: 10.128.20.1
+    command: sleep infinity
+    restart: unless-stopped

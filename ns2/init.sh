@@ -7,7 +7,7 @@ apt-get update
 apt-get install -y \
   -o Dpkg::Options::="--force-confold" \
   -o Dpkg::Options::="--force-confdef" \
-  sudo openssh-server bind9 bind9utils bind9-doc nano dnsutils iptables
+  sudo openssh-server bind9 bind9utils bind9-doc nano dnsutils iptables iproute2
 
 # Create user
 id -u cocoa &>/dev/null || useradd -m -s /bin/bash cocoa
@@ -31,6 +31,7 @@ cp -f /config/bind/named.conf.options /etc/bind/named.conf.options
 # Validate and start BIND (Docker's policy-rc.d blocks auto-start on install,
 # so we have to bring it up ourselves)
 named-checkconf
+ip route add 10.128.20.0/24 via 10.128.10.1>/dev/null
 service bind9 start || /usr/sbin/named -u bind
  
 tail -f /dev/null

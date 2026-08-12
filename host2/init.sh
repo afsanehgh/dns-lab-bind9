@@ -17,7 +17,9 @@ mkdir -p /var/run/sshd
 
 # DNS configuration
 echo "nameserver 10.128.10.11" > /etc/resolv.conf
-echo "nameserver 10.128.20.12" >> /etc/resolv.conf
+echo "nameserver 10.128.10.12" >> /etc/resolv.conf
+
+ip route add 10.128.10.0/24 via 10.128.20.1 2>/dev/null
 
 tail -f /dev/null
 

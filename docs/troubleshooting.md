@@ -9,13 +9,13 @@ This guide covers common issues encountered when running Bind9 in a primary/seco
 
 ### Symptoms
 ```
-dig nyc3.example.com
+dig nyc3.snowy.com
 ;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL
 ```
 
-docker exec host1 dig nyc3.example.com
+docker exec host1 dig nyc3.snowy.com
 
-; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> nyc3.example.com
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> nyc3.snowy.com
 ;; global options: +cmd
 ;; Got answer:
 ;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 13696
@@ -26,7 +26,7 @@ docker exec host1 dig nyc3.example.com
 ; EDNS: version: 0, flags:; udp: 1232
 ; COOKIE: e7a9105324ca8399010000006a7aa66f78919f69539a4620 (good)
 ;; QUESTION SECTION:
-;nyc3.example.com.              IN      A
+;nyc3.snowy.com.              IN      A
 
 ;; Query time: 0 msec
 ;; SERVER: 10.128.10.11#53(10.128.10.11) (UDP)
@@ -42,7 +42,7 @@ docker exec host1 dig nyc3.example.com
 Check zone syntax:
 
 ```bash
-named-checkzone nyc3.example.com /etc/bind/zones/db.nyc3.example.com
+named-checkzone nyc3.snowy.com /etc/bind/zones/db.nyc3.snowy.com
 ```
 
 Check config:
@@ -107,8 +107,8 @@ EDNS missing:
 ```
 
 ### Causes
-- EDNS disabled - docker exec host1 dig +noedns "@10.128.10.11" host1.nyc3.example.com
-                - docker exec host1 dig +noedns +dnssec "@10.128.10.11" nyc3.example.com 
+- EDNS disabled - docker exec host1 dig +noedns "@10.128.10.11" host1.nyc3.snowy.com
+                - docker exec host1 dig +noedns +dnssec "@10.128.10.11" nyc3.snowy.com 
 - Firewall blocking UDP fragments
 
 ### Fix
@@ -122,8 +122,8 @@ in `named.conf.options`.
 
 ---
 
-## 5. AXFR Fails - docker exec ns2 dig "@10.128.10.11" nyc3.example.com AXFR 
-  ##             - docker exec host1 dig "@10.128.10.11" nyc3.example.com AXFR +noall +answer +authority +comments
+## 5. AXFR Fails - docker exec ns2 dig "@10.128.10.11" nyc3.snowy.com AXFR 
+  ##             - docker exec host1 dig "@10.128.10.11" nyc3.snowy.com AXFR +noall +answer +authority +comments
 
 ### Symptoms
 ```
@@ -132,7 +132,7 @@ transfer failed
 
 ### Causes
 - ns1 not reachable - docker stop ns1
-                    - docker exec ns2 dig "@10.128.10.11" nyc3.example.com AXFR
+                    - docker exec ns2 dig "@10.128.10.11" nyc3.snowy.com AXFR
 - ACL missing
 - Serial number not incremented
 
@@ -158,7 +158,7 @@ Restart ns1.
 Re-sign zone:
 
 ```bash
-dnssec-signzone -3 <salt> -A -N keep -o nyc3.example.com db.nyc3.example.com
+dnssec-signzone -3 <salt> -A -N keep -o nyc3.snowy.com db.nyc3.snowy.com
 ```
 
 Reload:

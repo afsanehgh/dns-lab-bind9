@@ -1,0 +1,10 @@
+{
+    "editor.insertSpaces": false,
+    "[makefile]": {
+        "editor.insertSpaces": false,
+        "editor.detectIndentation": false
+    },
+    "files.associations": {
+        "Makefile": "makefile"
+    }
+}

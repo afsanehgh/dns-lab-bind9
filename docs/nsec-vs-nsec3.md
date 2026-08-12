@@ -29,13 +29,13 @@ NSEC creates a chain of **real, un-hashed domain names** in sorted order.
 Example:
 
 ```
-host1.nyc3.example.com → host2.nyc3.example.com
+host1.nyc3.snowy.com → host2.nyc3.snowy.com
 ```
 
 If a name does not exist, the server returns:
 
 ```
-host1.nyc3.example.com NSEC host2.nyc3.example.com
+host1.nyc3.snowy.com NSEC host2.nyc3.snowy.com
 ```
 
 This means:
@@ -107,7 +107,7 @@ Resolvers can still verify non‑existence, but attackers cannot easily reverse 
 Query a non‑existent name:
 
 ```bash
-dig doesnotexist.nyc3.example.com +dnssec
+dig doesnotexist.nyc3.snowy.com +dnssec
 ```
 
 You should see:

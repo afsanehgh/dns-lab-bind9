@@ -33,6 +33,7 @@ cp -f /config/bind/zones/* /etc/bind/zones/
 # Validate and start BIND (Docker's policy-rc.d blocks auto-start on install,
 # so we have to bring it up ourselves)
 named-checkconf
+ip route add 10.128.20.0/24 via 10.128.10.1>/dev/null
 service bind9 start || /usr/sbin/named -u bind
  
 tail -f /dev/null
